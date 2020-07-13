@@ -1,0 +1,25 @@
+#!/usr/bin/env sh
+
+if ! [ -x "$(command -v kubectl)" ]; then
+  echo 'Error: kubectl is not installed.' >&2
+  exit 1
+fi
+
+if [ -z "$1" ]; then
+  echo "Arguments are missing. Command should be used with 2 arguments, like: exekube <app-name> <command>"
+  exit 1
+fi
+
+if [ -z "$2" ]; then
+  echo "Second argument are missing. Command should be used with 2 arguments, like: exekube <app-name> <command>"
+  exit 1
+fi
+
+appName=$1
+executingCommand=$2
+pods=$(kubectl get pods --selector=app=$appName --template '{{range .items}}{{.metadata.name}}{{"\n"}}{{end}}')
+firstPod=`echo "${pods}" | head -1`
+
+echo "Executing command $executingCommand on pod $firstPod"
+
+kubectl exec -it $firstPod $executingCommand
