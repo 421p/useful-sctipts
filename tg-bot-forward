@@ -1,0 +1,60 @@
+#!/usr/bin/env sh
+
+TOKEN=$1
+WEBHOOK=$2
+
+OFFSET=0
+TIMEOUT=120
+
+if ! [ -x "$(command -v jq)" ]; then
+  echo 'Error: jq is not installed.' >&2
+  exit 1
+fi
+
+if ! [ -x "$(command -v base64)" ]; then
+  echo 'Error: base64 is not installed.' >&2
+  exit 1
+fi
+
+if ! [ -x "$(command -v curl)" ]; then
+  echo 'Error: curl is not installed.' >&2
+  exit 1
+fi
+
+function log() {
+    echo "[$(date +"%Y-%m-%d %H:%M:%S:%3N")] $*"
+}
+
+function poll() {
+    curl -sX POST \
+      https://api.telegram.org/bot${TOKEN}/getUpdates \
+      -H 'Content-Type: multipart/form-data' \
+      -F offset=${OFFSET} \
+      -F timeout=${TIMEOUT} | jq -r '.result[] | @base64'
+}
+
+function run() {
+    while true; do
+      local response=$(poll)
+
+      if [ ! -z "${response}" ]; then
+          for encodedUpdate in ${response}; do
+
+              update=$(base64 -d <<< ${encodedUpdate})
+              updateId=$(jq '.update_id' <<< ${update})
+
+              log "Sending json: ${update}"
+
+              echo $(
+                curl -sv --location --request POST "${WEBHOOK}" \
+                    --header 'Content-Type: application/json' \
+                    --data-raw "${update}"
+              )
+
+              OFFSET=$(($updateId + 1))
+          done
+      fi
+    done
+}
+
+run

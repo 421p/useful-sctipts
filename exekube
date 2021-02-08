@@ -22,4 +22,4 @@ firstPod=`echo "${pods}" | head -1`
 
 echo "Executing command $executingCommand on pod $firstPod"
 
-kubectl exec -it $firstPod $executingCommand
+kubectl exec -it $firstPod -- $executingCommand
